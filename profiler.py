@@ -18,7 +18,6 @@ class Profiler(object):
     def __init__(self, options):
         self.test = options.test
         self.dburl = options.dburl
-        self.runsnake = options.runsnake
         self.profile = options.profile
         self.dump = options.dump
         self.callers = options.callers
@@ -96,7 +95,7 @@ class Profiler(object):
     def _run_test(self, fn):
         if self._setup:
             self._setup(self.dburl, self.echo, self.num)
-        if self.profile or self.runsnake or self.dump:
+        if self.profile or self.dump:
             self._run_with_profile(fn)
         else:
             self._run_with_time(fn)
@@ -150,17 +149,12 @@ class Profiler(object):
             help="print callers as well (implies --dump)",
         )
         parser.add_argument(
-            "--runsnake",
-            action="store_true",
-            help="invoke runsnakerun (implies --profile)",
-        )
-        parser.add_argument(
             "--echo", action="store_true", help="Echo SQL output"
         )
         args = parser.parse_args()
 
         args.dump = args.dump or args.callers
-        args.profile = args.profile or args.dump or args.runsnake
+        args.profile = args.profile or args.dump
 
         if cls.name is None:
             __import__(args.name)
@@ -202,9 +196,7 @@ class TestResult(object):
         return summary
 
     def report_stats(self):
-        if self.profile.runsnake:
-            self._runsnake()
-        elif self.profile.dump:
+        if self.profile.dump:
             self._dump()
 
     def _dump(self):
@@ -212,11 +204,3 @@ class TestResult(object):
         self.stats.print_stats()
         if self.profile.callers:
             self.stats.print_callers()
-
-    def _runsnake(self):
-        filename = "%s.profile" % self.test.__name__
-        try:
-            self.stats.dump_stats(filename)
-            os.system("runsnake %s" % filename)
-        finally:
-            os.remove(filename)
